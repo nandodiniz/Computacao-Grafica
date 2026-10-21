@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Estrutura 3D - Computação Gráfica</title>
+  <style>
+    html, body { margin: 0; height: 100%; overflow: hidden; background: #0b0d12; font-family: system-ui, sans-serif; }
+    #info { position: fixed; top: 12px; left: 12px; color: #dfe6f3; background: rgba(0,0,0,.55);
+            padding: 10px 14px; border-radius: 8px; font-size: 14px; line-height: 1.6; pointer-events: none; }
+    kbd { background: #2a3142; border-radius: 4px; padding: 1px 6px; }
+    #erro { position: fixed; inset: 0; display: none; place-items: center; color: #ffb4b4; text-align: center; padding: 24px; }
+  </style>
+</head>
+<body>
+  <div id="info">
+    <b>Controles</b><br>
+    <kbd>W</kbd> frente &nbsp; <kbd>S</kbd> trás<br>
+    <kbd>A</kbd> esquerda &nbsp; <kbd>D</kbd> direita<br>
+    <kbd>Q</kbd> sobe &nbsp; <kbd>E</kbd> desce<br>
+    Arraste o mouse para olhar ao redor
+  </div>
+  <div id="erro"></div>
+
+  <script type="importmap">
+    { "imports": { "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js" } }
+  </script>
+
+  <script type="module">
+    import * as THREE from "three";
+
+    const cena = new THREE.Scene();
+    cena.background = new THREE.Color(0x0b0d12);
+    cena.fog = new THREE.Fog(0x0b0d12, 30, 80);
+
+    const camera = new THREE.PerspectiveCamera(70, innerWidth / innerHeight, 0.1, 200);
+    camera.position.set(0, 6, 22);
+    camera.rotation.order = "YXZ";
+
+    const renderer = new THREE.WebGLRenderer({ antialias: true });
+    renderer.setSize(innerWidth, innerHeight);
+    renderer.setPixelRatio(devicePixelRatio);
+    document.body.appendChild(renderer.domElement);
+
+    // Iluminação
+    cena.add(new THREE.AmbientLight(0xffffff, 0.45));
+    const sol = new THREE.DirectionalLight(0xffffff, 1.1);
+    sol.position.set(10, 20, 8);
+    cena.add(sol);
+
+    // Carrega o modelo gerado pelo programa em C++
+    try {
+      const resp = await fetch("modelo.json");
+      if (!resp.ok) throw new Error("modelo.json não encontrado. Rode o programa em C++ primeiro.");
+      const dados = await resp.json();
+
+      const geo = new THREE.BufferGeometry();
+      geo.setAttribute("position", new THREE.Float32BufferAttribute(dados.positions, 3));
+      geo.setAttribute("color", new THREE.Float32BufferAttribute(dados.colors, 3));
+      geo.setIndex(dados.indices);
+      geo.computeVertexNormals();
+
+      const mat = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.7, metalness: 0.1 });
+      cena.add(new THREE.Mesh(geo, mat));
+    } catch (e) {
+      const el = document.getElementById("erro");
+      el.style.display = "grid";
+      el.textContent = e.message;
+    }
+
+    // Controles: WASD (+ Q/E) e mouse
+    const teclas = {};
+    addEventListener("keydown", e => teclas[e.code] = true);
+    addEventListener("keyup",   e => teclas[e.code] = false);
+
+    let arrastando = false;
+    addEventListener("mousedown", () => arrastando = true);
+    addEventListener("mouseup",   () => arrastando = false);
+    addEventListener("mousemove", e => {
+      if (!arrastando) return;
+      camera.rotation.y -= e.movementX * 0.003;
+      camera.rotation.x -= e.movementY * 0.003;
+      camera.rotation.x = Math.max(-1.5, Math.min(1.5, camera.rotation.x));
+    });
+
+    addEventListener("resize", () => {
+      camera.aspect = innerWidth / innerHeight;
+      camera.updateProjectionMatrix();
+      renderer.setSize(innerWidth, innerHeight);
+    });
+
+    const relogio = new THREE.Clock();
+    const frente = new THREE.Vector3(), direita = new THREE.Vector3();
+
+    function animar() {
+      requestAnimationFrame(animar);
+      const dt = relogio.getDelta();
+      const vel = 10 * dt;
+
+      camera.getWorldDirection(frente);
+      frente.y = 0; frente.normalize();
+      direita.crossVectors(frente, camera.up).normalize();
+
+      if (teclas.KeyW) camera.position.addScaledVector(frente,  vel);
+      if (teclas.KeyS) camera.position.addScaledVector(frente, -vel);
+      if (teclas.KeyD) camera.position.addScaledVector(direita,  vel);
+      if (teclas.KeyA) camera.position.addScaledVector(direita, -vel);
+      if (teclas.KeyQ) camera.position.y += vel;
+      if (teclas.KeyE) camera.position.y -= vel;
+
+      renderer.render(cena, camera);
+    }
+    animar();
+  </script>
+</body>
+</html>
