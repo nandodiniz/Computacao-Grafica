@@ -19,6 +19,28 @@ transformações geométricas, câmera interativa, iluminação e texturização
 - A biblioteca gráfica e as dependências de compilação serão definidas durante
   o desenvolvimento.
 
+## Estrutura do repositório
+
+```text
+.
+├── src/
+│   └── main.cpp
+└── README.md
+```
+
+## Compilar a base C++
+
+Com um compilador C++ disponível no terminal, como o `g++`:
+
+```bash
+g++ -std=c++17 -Wall -Wextra -pedantic src/main.cpp -o Computacao-Grafica.exe
+.\Computacao-Grafica.exe
+```
+
+O Go Live serve páginas web e não compila nem executa este programa C++ nativo.
+Para visualizar a cena no navegador, será necessário preparar depois uma versão
+web, por exemplo com WebAssembly, ou uma página de visualização separada.
+
 ## Estado do projeto
 
 Este repositório está sendo preparado para o desenvolvimento do trabalho. As
